@@ -60,3 +60,5 @@ JOIN film ON inventory.film_id = film.film_id
 group by film.title
 order by rental_count desc
 limit 10
+
+-- Aufgabe 5a)
