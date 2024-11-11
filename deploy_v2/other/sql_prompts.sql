@@ -62,3 +62,11 @@ order by rental_count desc
 limit 10
 
 -- Aufgabe 5a)
+
+UPDATE staff
+SET password= 'DeinNeuesPaswort123!'
+WHERE staff_id = 1;
+ 
+UPDATE Staff
+SET password= 'DeinNeuesPaswort321!'
+WHERE staff_id = 2;
