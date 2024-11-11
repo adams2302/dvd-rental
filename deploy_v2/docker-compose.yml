@@ -1,0 +1,80 @@
+version: "3.9"
+
+networks:
+  backend:
+    external: true
+
+services:
+  postgres_db:
+    container_name: postgresdb
+    image: postgres:13
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: "dvdrental"
+    ports:
+      - "5432:5432"
+    networks:
+      - "backend"
+
+  postgres_seed:
+    container_name: postgresseed
+    image: postgres:13
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+      PGPASSWORD: "1234"
+    volumes:
+      - ./postgres/dvdrental.tar:/tmp/dvdrental.tar:ro
+    entrypoint: [ "bash", "-c", "sleep 10 && pg_restore -h postgresdb -U postgres -d dvdrental /tmp/dvdrental.tar" ]
+    restart: "no"
+    networks:
+      - "backend"
+    depends_on:
+      - "postgres_db"
+
+  adminer:
+    container_name: adminer
+    image: adminer
+    networks:
+      - "backend"
+    ports:
+      - "8080:8080"
+
+  cassandra_db:
+    container_name: cassandra
+    image: cassandra:3.11
+    environment:
+      CASSANDRA_CLUSTER_NAME: "cassandra"
+      CASSANDRA_KEYSPACE: "dvdrental"
+    ports:
+      - "9042:9042"
+    networks:
+      - "backend"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    depends_on:
+      - "postgres_seed"
+
+  python_service:
+    container_name: python_service
+    image: python:3.9
+    volumes:
+      - ./scripts:/scripts
+    networks:
+      - "backend"
+    depends_on:
+      postgres_db: 
+        condition: service_started
+      cassandra_db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: "postgresdb"
+      POSTGRES_DB: "dvdrental"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "1234"
+      CASSANDRA_HOST: "cassandra"
+    command: >
+      sh -c "pip install psycopg2-binary cassandra-driver && python /scripts/script.py"
