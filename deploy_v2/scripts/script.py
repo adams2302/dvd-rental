@@ -3,7 +3,7 @@ import psycopg2
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 import decimal
-
+from collections import Counter
 
 def main():
     #---------------------------------------FILM---------------------------------------
@@ -48,9 +48,9 @@ def main():
 
     #---------------------------------------INVENTORY---------------------------------------
 
-    # Tabelle 'films_per_store' im Keyspace erstellen
+    # Tabelle 'inventory' im Keyspace erstellen
     nosql_command = """
-        CREATE TABLE IF NOT EXISTS films_per_store (
+        CREATE TABLE IF NOT EXISTS inventory (
         store_id int,
         film_id int,
         PRIMARY KEY (store_id, film_id)
@@ -61,15 +61,43 @@ def main():
     sql_command = 'SELECT store_id, film_id FROM inventory;'
     data = execute_sql(pg_conn, sql_command)
 
-    # Blank Insert Kommando für Cassandra Tabelle 'films_per_store'
+    # Blank Insert Kommando für Cassandra Tabelle 'inventory'
     nosql_command = """
-    INSERT INTO films_per_store (
+    INSERT INTO inventory (
         store_id, film_id
     ) VALUES (?, ?)
     """
     insert_statement = cs_session.prepare(nosql_command)
 
-    # Jede Reihe aus der Postgres 'inventory' Tabelle in die Cassandra 'films_per_store' Tabelle kopieren
+    # Jede Reihe aus der Postgres 'inventory' Tabelle in die Cassandra 'inventory' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
+    #---------------------------------------RENTAL---------------------------------------
+
+    # Tabelle 'rental' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS rental (
+        rental_id int,
+        customer_id int,
+        staff_id int,
+        PRIMARY KEY (rental_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # srental_id, customer_id und staff_id aus der 'rental' Tabelle in Postgres selektieren
+    sql_command = 'SELECT rental_id, customer_id, staff_id FROM rental;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'rental'
+    nosql_command = """
+    INSERT INTO rental (
+        rental_id, customer_id, staff_id
+    ) VALUES (?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'rental' Tabelle in die Cassandra 'rental' Tabelle kopieren
     for row in data:
         cs_session.execute(insert_statement, row)
 
@@ -80,32 +108,25 @@ def main():
     result = cs_session.execute(nosql_command)
     print(result.one()[0])
 
-    print("Aufgabe 4.b) Anzahl der unterschiedlichen Filme je Standort")
-    result = cs_session.execute("SELECT store_id, film_id FROM films_per_store;")
+    print("Aufgabe 4.b) Anzahl der unterschiedlichen Filme je Standort:")
+    result = cs_session.execute("SELECT store_id, film_id FROM inventory;")
     store_counts = {}
     for row in result:
         store_counts[row.store_id] = store_counts.get(row.store_id, 0) + 1
     for store_id, count in store_counts.items():
         print(f"Store ID {store_id}: {count} unique films")
 
-    # Create Keyspace (if not exists)
-    cs_session.execute("""
-    CREATE KEYSPACE IF NOT EXISTS dvdrental
-    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}
-    """)
+    #print("Aufgabe 4.e) Die IDs der 10 Kunden mit den meisten Entleihungen:")
+    #nosql_command = "SELECT customer_id FROM rental;"
+    #result = cs_session.execute(nosql_command)
+    # Zählung der Kunden-IDs durchführen
+    #rental_counts = Counter(row.customer_id for row in rows)
+    # Top 10 Kunden basierend auf der Anzahl der Ausleihen sortieren
+    #top_customers = rental_counts.most_common(10)
+    #print("Top 10 Kunden mit den meisten Ausleihen:")
+    #for customer_id, count in top_customers:
+     #   print(f"Customer ID: {customer_id}, Number of Rentals: {count}")
 
-    # Connect to the new keyspace
-    cs_session.set_keyspace("dvdrental")
-
-    # Create a table
-    cs_session.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id UUID PRIMARY KEY,
-        name text,
-        email text
-    )
-    """)
-    #print("Cassandra setup complete. Keyspace and table created.")
 
 #--------------------------Verbindung zur Postgres DB herstellen-----------------------------------
 
@@ -142,8 +163,8 @@ def execute_sql(conn, command):
 
 try:
     print("\n--------------------------Python Script startet-----------------------------------")
-    #----------------------------Verbindung zur Postgres herstellen-----------------------------------
-   
+    
+    #Verbindung zur Postgres herstellen
     pg_conn = get_postgres_conn()
 
     # Cassandra verbindung herstellen
@@ -161,8 +182,7 @@ try:
     main()
 
 finally:
-    # Ensure resources are released at the end
-    # Am Ende Verbindung zu Postgres und Cassandra trennen
+    # Am Ende Verbindung zu Postgres und Cassandra trennen und Ressourcen freigeben
     pg_conn.close()
     cs_cluster.shutdown()
     pg_conn.close()
