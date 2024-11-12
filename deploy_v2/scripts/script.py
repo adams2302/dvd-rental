@@ -38,6 +38,11 @@ def execute_sql(conn, command):
     except Exception as e:
         print(f"Fehler bei der Ausführung des SQL-Kommandos: {e}")
         return []
+#--------------Funktion um mit staff_id ein neues Passwort zu vergeben-----------------------    
+def update_password(staff_id, new_password):
+    query = "UPDATE staff SET password = %s WHERE staff_id = %s"
+    cs_session.execute(query, (new_password, staff_id))
+    print(f"Passwort für staff_id {staff_id} wurde erfolgreich aktualisiert.") 
 
 def main():
     #---------------------------------------FILM---------------------------------------
@@ -169,13 +174,48 @@ def main():
 
         cs_session.execute(insert_statement, (actor_id, film_id))
 
+     #---------------------------------------STAFF---------------------------------------
+
+    # Tabelle 'rental' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS staff (
+        staff_id int,
+        first_name text,
+        last_name text,
+        store_id int,
+        username text,
+        password text,
+        PRIMARY KEY (staff_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # rental_id, customer_id und staff_id aus der 'staff' Tabelle in Postgres selektieren
+    sql_command = 'SELECT staff_id, first_name, last_name, store_id, username, password FROM staff;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'staff'
+    nosql_command = """
+    INSERT INTO staff (
+        staff_id, first_name, last_name, store_id, username, password
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'staff' Tabelle in die Cassandra 'staff' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
     #---------------------------------------AUFGABEN---------------------------------------
 
+    #------Aufgabe 4.a
+    print()
     print("Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:")
     nosql_command = "SELECT COUNT(*) FROM film;"
     result = cs_session.execute(nosql_command)
     print(result.one()[0])
 
+    #------Aufgabe 4.b
+    print()
     print("Aufgabe 4.b) Anzahl der unterschiedlichen Filme je Standort:")
     result = cs_session.execute("SELECT store_id, film_id FROM inventory;")
     store_counts = {}
@@ -184,6 +224,8 @@ def main():
     for store_id, count in store_counts.items():
         print(f"Store ID {store_id}: {count} unique films")
 
+    #------Aufgabe 4.c
+    print()
     print("Aufgabe 4.c) Die Vor- und Nachnamen der 10 Schauspieler mit den meisten Filmen:")
     # Zunächst alle Einträge aus der 'film_actor' Tabelle abfragen
     nosql_command = "SELECT actor_id, film_id FROM film_actor;"
@@ -223,7 +265,8 @@ def main():
     except Exception as e:
         print(f"Fehler bei der Abfrage: {e}")
 
-
+    #------Aufgabe 4.e
+    print()
     print("Aufgabe 4.e) Die IDs der 10 Kunden mit den meisten Entleihungen:")
     nosql_command = "SELECT customer_id FROM rental;"
     result = cs_session.execute(nosql_command)
@@ -232,6 +275,20 @@ def main():
     print("Top 10 Kunden mit den meisten Ausleihen:")
     for customer_id, count in top_customers:
         print(f"Customer ID: {customer_id}, Number of Rentals: {count}")
+
+    #------Aufgabe 5.a
+    print()
+    print("Aufgabe 5.a) Vergabe eines neuen, sicheren Passworts für alle Mitarbeiter:")
+    # Nutzen der eingangs erstellen Funktion zum Updaten eines Passworts
+    update_password(1, 'DeinNeuesSicheresPaswort123!')
+    update_password(2, 'DeinNeuesSicheresPaswort321!')
+    #Ausgeben der neuen Passwörter
+    print()
+    print("Ausgabe der neuen Passwörter:")
+    nosql_command = "SELECT staff_id, password FROM staff"
+    result = cs_session.execute(nosql_command)
+    for row in result:
+        print(f"Staff ID: {row.staff_id}, Password: {row.password}")
 
 try:
     print("\n--------------------------Python Script startet-----------------------------------")
