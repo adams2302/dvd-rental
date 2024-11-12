@@ -61,8 +61,28 @@ group by film.title
 order by rental_count desc
 limit 10
 
--- Aufgabe 5a)
+-- Aufgabe 4i)
+-- Eine Sicht auf die Kunden mit allen relevanten Informationen wie im View „customer_list“ der vorhandenen Postgres-Datenbank
+SELECT customer.customer_id AS id,
+    concat(customer.first_name, ' ', customer.last_name) AS name,
+    address.address,
+    address.postal_code AS zip_code,
+    address.phone,
+    city.city,
+    country.country,
+        CASE
+            WHEN (customer.active = 1) THEN 'active'::text
+            WHEN (customer.active = 0) THEN 'inactive'::text
+            ELSE NULL::text
+        END AS notes,
+    customer.store_id AS sid
+   FROM (((customer
+     JOIN address ON ((customer.address_id = address.address_id)))
+     JOIN city ON ((address.city_id = city.city_id)))
+     JOIN country ON ((city.country_id = country.country_id)));
 
+-- Aufgabe 5a)
+-- Allen Mitarbeitern neue Passwörter vergeben
 UPDATE staff
 SET password= 'DeinNeuesPaswort123!'
 WHERE staff_id = 1;

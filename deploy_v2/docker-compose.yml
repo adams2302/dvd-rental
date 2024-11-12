@@ -50,11 +50,10 @@ services:
       - "backend"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-    depends_on:
-      - "postgres_seed"
+      interval: 5s
+      timeout: 2s
+      retries: 15
+      start_period: 10s
 
   python_service:
     container_name: python_service

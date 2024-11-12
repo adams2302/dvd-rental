@@ -3,7 +3,7 @@ import psycopg2
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 import decimal
-from collections import Counter
+from collections import Counter, defaultdict
 import uuid
 
 # Hilfsfunktion zur Umwandlung von int zu UUID
@@ -205,6 +205,35 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
+
+    #---------------------------------------PAYMENT---------------------------------------
+
+    # Tabelle 'rental' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS payment (
+        payment_id int,
+        staff_id int,
+        amount float,
+        PRIMARY KEY (payment_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # rental_id, customer_id und staff_id aus der 'payment' Tabelle in Postgres selektieren
+    sql_command = 'SELECT payment_id, staff_id, amount FROM payment;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'payment'
+    nosql_command = """
+    INSERT INTO payment (
+        payment_id, staff_id, amount
+    ) VALUES (?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'payment' Tabelle in die Cassandra 'payment' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
     #---------------------------------------AUFGABEN---------------------------------------
 
     #------Aufgabe 4.a
@@ -265,6 +294,26 @@ def main():
     except Exception as e:
         print(f"Fehler bei der Abfrage: {e}")
 
+    #------Aufgabe 4.d
+    print()
+    print("Aufgabe 4.d) Die Erlöse je Mitarbeiter:")
+    # Abfrage für Mitarbeiter
+    nosql_command = "SELECT staff_id FROM staff"
+    staff_rows = cs_session.execute(nosql_command)
+    # Abfrage für Zahlungen
+    nosql_command = "SELECT staff_id, amount FROM payment"
+    payment_rows = cs_session.execute(nosql_command)
+    # Umsatz pro Mitarbeiter berechnen
+    revenue_by_staff = defaultdict(float)
+    for row in payment_rows:
+        if row.staff_id is not None:
+            revenue_by_staff[row.staff_id] += row.amount
+    # Ergebnisse mit den Mitarbeitern verknüpfen
+    for staff in staff_rows:
+        staff_id = staff.staff_id
+        revenue = revenue_by_staff.get(staff_id, 0)
+        print(f"Staff ID: {staff_id}, Revenue: {revenue:.2f}")
+
     #------Aufgabe 4.e
     print()
     print("Aufgabe 4.e) Die IDs der 10 Kunden mit den meisten Entleihungen:")
@@ -280,8 +329,8 @@ def main():
     print()
     print("Aufgabe 5.a) Vergabe eines neuen, sicheren Passworts für alle Mitarbeiter:")
     # Nutzen der eingangs erstellen Funktion zum Updaten eines Passworts
-    update_password(1, 'DeinNeuesSicheresPaswort123!')
-    update_password(2, 'DeinNeuesSicheresPaswort321!')
+    update_password(1, 'DeinNeuesSicheresPasswort123!')
+    update_password(2, 'DeinNeuesSicheresPasswort321!')
     #Ausgeben der neuen Passwörter
     print()
     print("Ausgabe der neuen Passwörter:")
