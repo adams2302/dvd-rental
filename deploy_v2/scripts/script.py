@@ -90,6 +90,7 @@ def main():
     # Tabelle 'inventory' im Keyspace erstellen
     nosql_command = """
         CREATE TABLE IF NOT EXISTS inventory (
+        inventory_id int,
         store_id int,
         film_id int,
         PRIMARY KEY (store_id, film_id)
@@ -97,14 +98,14 @@ def main():
     cs_session.execute(nosql_command)
 
     # store_id und film_id aus der 'inventory' Tabelle in Postgres selektieren
-    sql_command = 'SELECT store_id, film_id FROM inventory;'
+    sql_command = 'SELECT inventory_id, store_id, film_id FROM inventory;'
     data = execute_sql(pg_conn, sql_command)
 
     # Blank Insert Kommando für Cassandra Tabelle 'inventory'
     nosql_command = """
     INSERT INTO inventory (
-        store_id, film_id
-    ) VALUES (?, ?)
+        inventory_id, store_id, film_id
+    ) VALUES (?, ?, ?)
     """
     insert_statement = cs_session.prepare(nosql_command)
 
@@ -118,6 +119,7 @@ def main():
     nosql_command = """
         CREATE TABLE IF NOT EXISTS rental (
         rental_id int,
+        inventory_id int,
         customer_id int,
         staff_id int,
         PRIMARY KEY (rental_id)
@@ -125,14 +127,14 @@ def main():
     cs_session.execute(nosql_command)
 
     # rental_id, customer_id und staff_id aus der 'rental' Tabelle in Postgres selektieren
-    sql_command = 'SELECT rental_id, customer_id, staff_id FROM rental;'
+    sql_command = 'SELECT rental_id, inventory_id, customer_id, staff_id FROM rental;'
     data = execute_sql(pg_conn, sql_command)
 
     # Blank Insert Kommando für Cassandra Tabelle 'rental'
     nosql_command = """
     INSERT INTO rental (
-        rental_id, customer_id, staff_id
-    ) VALUES (?, ?, ?)
+        rental_id, inventory_id, customer_id, staff_id
+    ) VALUES (?, ?, ?, ?)
     """
     insert_statement = cs_session.prepare(nosql_command)
 
@@ -212,6 +214,7 @@ def main():
     nosql_command = """
         CREATE TABLE IF NOT EXISTS payment (
         payment_id int,
+        customer_id int,
         staff_id int,
         amount float,
         PRIMARY KEY (payment_id)
@@ -219,18 +222,104 @@ def main():
     cs_session.execute(nosql_command)
 
     # rental_id, customer_id und staff_id aus der 'payment' Tabelle in Postgres selektieren
-    sql_command = 'SELECT payment_id, staff_id, amount FROM payment;'
+    sql_command = 'SELECT payment_id, customer_id, staff_id, amount FROM payment;'
     data = execute_sql(pg_conn, sql_command)
 
     # Blank Insert Kommando für Cassandra Tabelle 'payment'
     nosql_command = """
     INSERT INTO payment (
-        payment_id, staff_id, amount
-    ) VALUES (?, ?, ?)
+        payment_id, customer_id, staff_id, amount
+    ) VALUES (?, ?, ?, ?)
     """
     insert_statement = cs_session.prepare(nosql_command)
 
     # Jede Reihe aus der Postgres 'payment' Tabelle in die Cassandra 'payment' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
+    #---------------------------------------CUSTOMER---------------------------------------
+
+    # Tabelle 'customer' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS customer (
+        customer_id int,
+        store_id int,
+        first_name text,
+        last_name text,
+        address_id int,
+        activebool boolean,
+        PRIMARY KEY (customer_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # rental_id, customer_id und staff_id aus der 'customer' Tabelle in Postgres selektieren
+    sql_command = 'SELECT customer_id, store_id, first_name, last_name, address_id, activebool FROM customer;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'customer'
+    nosql_command = """
+    INSERT INTO customer (
+        customer_id, store_id, first_name, last_name, address_id, activebool
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'customer' Tabelle in die Cassandra 'customer' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
+    #---------------------------------------CITY---------------------------------------
+
+    # Tabelle 'city' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS city (
+        city_id int,
+        city text,
+        country_id int,
+        PRIMARY KEY (city_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # rental_id, customer_id und staff_id aus der 'city' Tabelle in Postgres selektieren
+    sql_command = 'SELECT city_id, city, country_id FROM city;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'city'
+    nosql_command = """
+    INSERT INTO city (
+        city_id, city, country_id
+    ) VALUES (?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'city' Tabelle in die Cassandra 'city' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
+    #---------------------------------------COUNTRY---------------------------------------
+
+    # Tabelle 'country' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS country (
+        country_id int,
+        country text,
+        PRIMARY KEY (country_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # rental_id, customer_id und staff_id aus der 'country' Tabelle in Postgres selektieren
+    sql_command = 'SELECT country_id, country FROM country;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'country'
+    nosql_command = """
+    INSERT INTO country (
+        country_id, country
+    ) VALUES (?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'country' Tabelle in die Cassandra 'country' Tabelle kopieren
     for row in data:
         cs_session.execute(insert_statement, row)
 
@@ -324,6 +413,67 @@ def main():
     print("Top 10 Kunden mit den meisten Ausleihen:")
     for customer_id, count in top_customers:
         print(f"Customer ID: {customer_id}, Number of Rentals: {count}")
+
+    #------Aufgabe 4.f
+    print()
+    print("Aufgabe 4.f) Die Vor- und Nachnamen sowie die Niederlassung der 10 Kunden, die das meiste Geld ausgegeben haben:")
+    # Abfrage der Kundendaten
+    customer_query = "SELECT customer_id, first_name, last_name, store_id FROM customer"
+    customers = cs_session.execute(customer_query)
+    # Abfrage der Zahlungsdaten
+    payment_query = "SELECT customer_id, amount FROM payment"
+    payments = cs_session.execute(payment_query)
+    # Mapping der Umsätze pro Kunde
+    revenue_by_customer = defaultdict(float)
+    for payment in payments:
+        if payment.customer_id is not None:
+            revenue_by_customer[payment.customer_id] += payment.amount
+    # Kunden mit Umsätzen verknüpfen
+    customer_revenues = []
+    for customer in customers:
+        full_name = f"{customer.first_name} {customer.last_name}"
+        store_id = customer.store_id
+        revenue = revenue_by_customer.get(customer.customer_id, 0)
+        customer_revenues.append((full_name, store_id, revenue))
+    # Nach Umsatz sortieren und Top 10 auswählen
+    top_customers = sorted(customer_revenues, key=lambda x: x[2], reverse=True)[:10]
+    # Ergebnisse drucken
+    print("Top 10 Kunden nach Umsatz:")
+    for name, store, revenue in top_customers:
+        print(f"Name: {name}, Store: {store}, Revenue: {revenue:.2f}")
+
+    #------Aufgabe 4.g
+    print()
+    print("Aufgabe 4.g) Die 10 meistgesehenen Filme unter Angabe des Titels, absteigend sortiert:")
+    # Abfrage der Filmtitel
+    film_query = "SELECT film_id, title FROM film"
+    films = cs_session.execute(film_query)
+    # Abfrage der Inventardaten
+    inventory_query = "SELECT inventory_id, film_id FROM inventory"
+    inventories = cs_session.execute(inventory_query)
+    # Abfrage der Mietdaten
+    rental_query = "SELECT inventory_id FROM rental"
+    rentals = cs_session.execute(rental_query)
+    # Mapping von film_id zu title
+    film_map = {film.film_id: film.title for film in films}
+    # Mapping von inventory_id zu film_id
+    inventory_map = {inventory.inventory_id: inventory.film_id for inventory in inventories}
+    # Zählung der Vermietungen pro Film
+    rental_count = defaultdict(int)
+    for rental in rentals:
+        film_id = inventory_map.get(rental.inventory_id)
+        if film_id is not None:
+            rental_count[film_id] += 1
+    # Verknüpfung mit den Filmtiteln
+    film_rentals = [(film_map[film_id], count) for film_id, count in rental_count.items() if film_id in film_map]
+
+    # Sortieren nach Anzahl der Vermietungen und Begrenzung auf die Top 10
+    top_rented_films = sorted(film_rentals, key=lambda x: x[1], reverse=True)[:10]
+
+    # Ergebnisse drucken
+    print("Top 10 meistvermietete Filme:")
+    for title, count in top_rented_films:
+        print(f"Title: {title}, Rentals: {count}")
 
     #------Aufgabe 5.a
     print()
