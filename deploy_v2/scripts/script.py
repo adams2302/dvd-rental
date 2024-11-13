@@ -5,6 +5,7 @@ from cassandra.auth import PlainTextAuthProvider
 import decimal
 from collections import Counter, defaultdict
 import uuid
+import time
 
 # Hilfsfunktion zur Umwandlung von int zu UUID
 def int_to_uuid(i):
@@ -491,7 +492,9 @@ def main():
 
 try:
     print("\n--------------------------Python Script startet-----------------------------------")
-    
+    # Startzeit erfassen
+    start_time = time.time()
+
     #Verbindung zur Postgres herstellen
     pg_conn = get_postgres_conn()
 
@@ -509,6 +512,14 @@ try:
 
     # Die Hauptfunktion ausführen
     main()
+
+    # Endzeit erfassen und Laufzeit berechnen
+    end_time = time.time()  
+    duration = end_time - start_time  # Laufzeit berechnen
+
+    # Laufzeit in Sekunden ausgeben
+    print(f"\nGesamtlaufzeit des Skripts: {duration:.2f} Sekunden")
+
     
 except Exception as e:
     print(f"Fehler aufgetreten: {e}")
