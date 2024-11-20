@@ -324,6 +324,45 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
+    #---------------------------------------Film Count---------------------------------------
+    
+    # Erstellt die Tabelle film_rental_count_by_title.
+    
+    nosql_command = """
+    CREATE TABLE IF NOT EXISTS film_rental_count_by_title (
+        title TEXT PRIMARY KEY,
+        rental_count INT
+    );
+    """
+    cs_session.execute(nosql_command)
+    print("Tabelle 'film_rental_count_by_title' wurde erstellt.")
+    
+    # Befüllt die Tabelle film_rental_count_by_title basierend auf den Daten in rental, inventory und film.
+    
+    # Schritt 1: Aggregation der Daten in Python
+    sql_command = """
+    SELECT film.title AS title, COUNT(rental.rental_id) AS rental_count
+    FROM rental
+    JOIN inventory ON rental.inventory_id = inventory.inventory_id
+    JOIN film ON inventory.film_id = film.film_id
+    GROUP BY film.title;
+    """
+    data = execute_sql(pg_conn, sql_command)
+    
+    # Schritt 2: Ergebnisse in die Tabelle film_rental_count_by_title einfügen
+    nosql_command = """
+    INSERT INTO film_rental_count_by_title (
+        title, 
+        rental_count
+    )VALUES (?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    for row in data:
+        cs_session.execute(insert_statement, row)
+    
+    print("Tabelle 'film_rental_count_by_title' wurde erfolgreich befüllt.")
+
     #---------------------------------------AUFGABEN---------------------------------------
 
     #------Aufgabe 4.a
@@ -446,35 +485,13 @@ def main():
     #------Aufgabe 4.g
     print()
     print("Aufgabe 4.g) Die 10 meistgesehenen Filme unter Angabe des Titels, absteigend sortiert:")
-    # Abfrage der Filmtitel
-    film_query = "SELECT film_id, title FROM film"
-    films = cs_session.execute(film_query)
-    # Abfrage der Inventardaten
-    inventory_query = "SELECT inventory_id, film_id FROM inventory"
-    inventories = cs_session.execute(inventory_query)
-    # Abfrage der Mietdaten
-    rental_query = "SELECT inventory_id FROM rental"
-    rentals = cs_session.execute(rental_query)
-    # Mapping von film_id zu title
-    film_map = {film.film_id: film.title for film in films}
-    # Mapping von inventory_id zu film_id
-    inventory_map = {inventory.inventory_id: inventory.film_id for inventory in inventories}
-    # Zählung der Vermietungen pro Film
-    rental_count = defaultdict(int)
-    for rental in rentals:
-        film_id = inventory_map.get(rental.inventory_id)
-        if film_id is not None:
-            rental_count[film_id] += 1
-    # Verknüpfung mit den Filmtiteln
-    film_rentals = [(film_map[film_id], count) for film_id, count in rental_count.items() if film_id in film_map]
+    
+    result = cs_session.execute("SELECT title, rental_count FROM film_rental_count_by_title")
+    sorted_result = sorted(result, key=lambda x: x.rental_count, reverse=True)
+    top_10 = sorted_result[:10]
 
-    # Sortieren nach Anzahl der Vermietungen und Begrenzung auf die Top 10
-    top_rented_films = sorted(film_rentals, key=lambda x: x[1], reverse=True)[:10]
-
-    # Ergebnisse drucken
-    print("Top 10 meistvermietete Filme:")
-    for title, count in top_rented_films:
-        print(f"Title: {title}, Rentals: {count}")
+    for idx, row in enumerate(top_10, 1):
+        print(f"{idx}. {row.title} - {row.rental_count} Ausleihen")
 
     #------Aufgabe 5.a
     print()
