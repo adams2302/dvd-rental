@@ -61,6 +61,18 @@ group by film.title
 order by rental_count desc
 limit 10
 
+-- Aufgabe 4h)
+-- Die 3 meistgesehenen Filmkategorien
+select category.name,
+count(rental.rental_id) as rental_count
+from rental
+JOIN inventory ON rental.inventory_id = inventory.inventory_id
+JOIN film_category ON inventory.film_id = film_category.film_id
+JOIN category ON film_category.category_id = category.category_id
+group by category.name
+order by rental_count desc
+limit 3
+
 -- Aufgabe 4i)
 -- Eine Sicht auf die Kunden mit allen relevanten Informationen wie im View „customer_list“ der vorhandenen Postgres-Datenbank
 SELECT customer.customer_id AS id,

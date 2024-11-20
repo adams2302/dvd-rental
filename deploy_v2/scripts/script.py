@@ -327,7 +327,6 @@ def main():
     #---------------------------------------Film Count---------------------------------------
     
     # Erstellt die Tabelle film_rental_count_by_title.
-    
     nosql_command = """
     CREATE TABLE IF NOT EXISTS film_rental_count_by_title (
         title TEXT PRIMARY KEY,
@@ -335,11 +334,8 @@ def main():
     );
     """
     cs_session.execute(nosql_command)
-    print("Tabelle 'film_rental_count_by_title' wurde erstellt.")
     
-    # Befüllt die Tabelle film_rental_count_by_title basierend auf den Daten in rental, inventory und film.
-    
-    # Schritt 1: Aggregation der Daten in Python
+    # title und rental_count aus Postgres selektieren
     sql_command = """
     SELECT film.title AS title, COUNT(rental.rental_id) AS rental_count
     FROM rental
@@ -349,7 +345,7 @@ def main():
     """
     data = execute_sql(pg_conn, sql_command)
     
-    # Schritt 2: Ergebnisse in die Tabelle film_rental_count_by_title einfügen
+    # Blank Insert Kommando für Cassandra Tabelle 'film_rental_count_by_title'
     nosql_command = """
     INSERT INTO film_rental_count_by_title (
         title, 
@@ -358,10 +354,41 @@ def main():
     """
     insert_statement = cs_session.prepare(nosql_command)
 
+    # Jede Reihe aus der Postgres-Abfrage in die Cassandra 'film_rental_count_by_title' Tabelle kopieren
     for row in data:
         cs_session.execute(insert_statement, row)
     
-    print("Tabelle 'film_rental_count_by_title' wurde erfolgreich befüllt.")
+    #---------------------------------------Category Count---------------------------------------
+
+    # Erstellt die Tabelle category_rental_count.
+    nosql_command = """
+    CREATE TABLE IF NOT EXISTS category_rental_count (
+        category_name TEXT PRIMARY KEY,
+        rental_count INT
+    );
+    """
+    cs_session.execute(nosql_command)
+
+    # category_name und rental_count aus Postgres selektieren
+    sql_command = """
+    SELECT category.name AS category_name, COUNT(rental.rental_id) AS rental_count
+    FROM rental
+    JOIN inventory ON rental.inventory_id = inventory.inventory_id
+    JOIN film_category ON inventory.film_id = film_category.film_id
+    JOIN category ON film_category.category_id = category.category_id
+    GROUP BY category.name;
+    """
+    data = execute_sql(pg_conn, sql_command)
+    
+    # Blank Insert Kommando für Cassandra Tabelle 'category_rental_count'
+    nosql_command = """
+    INSERT INTO category_rental_count (category_name, rental_count)
+    VALUES (?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    for row in data:
+        cs_session.execute(insert_statement, row)
 
     #---------------------------------------AUFGABEN---------------------------------------
 
@@ -492,6 +519,17 @@ def main():
 
     for idx, row in enumerate(top_10, 1):
         print(f"{idx}. {row.title} - {row.rental_count} Ausleihen")
+
+    #------Aufgabe 4.h
+    print()
+    print("Aufgabe 4.h) Die 3 meistgesehenen Filmkategorien:")
+    
+    result = cs_session.execute("SELECT category_name, rental_count FROM category_rental_count")
+    sorted_result = sorted(result, key=lambda x: x.rental_count, reverse=True)
+    top_3 = sorted_result[:3]
+
+    for idx, row in enumerate(top_3, 1):
+        print(f"{idx}. {row.category_name} - {row.rental_count} Ausleihen")
 
     #------Aufgabe 5.a
     print()
