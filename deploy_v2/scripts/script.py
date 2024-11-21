@@ -46,7 +46,7 @@ def update_password(staff_id, new_password):
     print(f"Passwort für staff_id {staff_id} wurde erfolgreich aktualisiert.") 
 
 def main():
-    # Tabellen
+    # bereits in Postgres existierende Tabellen
     #---------------------------------------FILM---------------------------------------
 
     # Tabelle 'film' im Keyspace erstellen
@@ -307,6 +307,56 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
+    #---------------------------------------CUSTOMER-List---------------------------------------
+
+    # Tabelle 'customer_list' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS customer_list (
+        id int,
+        name text,
+        address varchar,
+        postal_code varchar,
+        phone varchar,
+        city varchar,
+        country varchar,
+        notes text,
+        sid int,
+        PRIMARY KEY (id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # rental_id, customer_id und staff_id aus der 'customer' Tabelle in Postgres selektieren
+    sql_command = """SELECT cu.customer_id AS id,
+        (((cu.first_name)::text || ' '::text) || (cu.last_name)::text) AS name,
+        a.address,
+        a.postal_code AS "zip code",
+        a.phone,
+        city.city,
+        country.country,
+            CASE
+                WHEN cu.activebool THEN 'active'::text
+                ELSE ''::text
+            END AS notes,
+        cu.store_id AS sid
+        FROM (((customer cu
+            JOIN address a ON ((cu.address_id = a.address_id)))
+            JOIN city ON ((a.city_id = city.city_id)))
+            JOIN country ON ((city.country_id = country.country_id)));"""
+
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'customer'
+    nosql_command = """
+    INSERT INTO customer_list (
+        id, name, address, postal_code, phone, city, country, notes, sid
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'customer' Tabelle in die Cassandra 'customer' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
     #---------------------------------------CITY---------------------------------------
 
     # Tabelle 'city' im Keyspace erstellen
@@ -396,6 +446,7 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
     
+    # neue Tabellen
     #---------------------------------------Category Count---------------------------------------
 
     # Erstellt die Tabelle category_rental_count.
@@ -549,7 +600,18 @@ def main():
 
     #------Aufgabe 4.i
     print()
-    print("Aufgabe 4.i) Eine Sicht auf die Kunden mit allen relevanten Informationen:")
+    print("Aufgabe 4.i) Eine Sicht auf die Kunden mit allen relevanten Informationen:\n")
+
+    # Abfrage, um alle Kundeninformationen abzurufen
+    rows = cs_session.execute("SELECT id, name, address, postal_code, phone, city, country, notes, sid FROM customer_list;")
+
+    # Header mit den neuen Spaltennamen
+    print(f"{'id':<5}{'name':<22}{'address':<40}{'zip':<6}{'phone':<14}{'city':<27}{'country':<20}{'notes':<7}{'sid':<2}")
+    print("-" * 144)
+
+    # Durch jede Zeile iterieren und die Spalten ausgeben
+    for row in rows:
+        print(f"{row.id:<5}{row.name:<22}{row.address:<40}{row.postal_code:<6}{row.phone:<14}{row.city:<27}{row.country:<20}{row.notes:<7}{row.sid:<2}")
 
     #------Aufgabe 5.a
     print()
