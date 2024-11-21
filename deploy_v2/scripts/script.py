@@ -436,8 +436,8 @@ def main():
     print()
     print("Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:")
     nosql_command = "SELECT COUNT(*) FROM film;"
-    result = cs_session.execute(nosql_command)
-    print(result.one()[0])
+    result_4a = cs_session.execute(nosql_command)
+    print(result_4a.one()[0])
 
     #------Aufgabe 4.b
     print()
