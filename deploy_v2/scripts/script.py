@@ -182,16 +182,16 @@ def main():
     # Tabelle 'film_actor' im Keyspace erstellen
     nosql_command = """
     CREATE TABLE IF NOT EXISTS actor (
-        actor_id UUID,
-        first_name UUID,
-        last_name UUID,
-        last_update timestamp,
-        PRIMARY KEY (actor_id)
+        actor_id UUID PRIMARY KEY,
+        first_name text,
+        last_name text,
+        last_update timestamp
     );"""
+
     cs_session.execute(nosql_command)
 
     # actor_id und name aus der 'actor' Tabelle in Postgres selektieren
-    sql_command = 'SELECT actor_id, first_name, last_name, last_update;'
+    sql_command = 'SELECT actor_id, first_name, last_name, last_update FROM actor;'
     data = execute_sql(pg_conn, sql_command)
 
     # Blank Insert Kommando für Cassandra Tabelle 'film_actor'
@@ -211,9 +211,6 @@ def main():
 
         # Wenn UUID erwartet wird, aber int vorhanden ist, UUID erstellen
         actor_id = int_to_uuid(actor_id)  # Umwandeln von int zu UUID
-        first_name = int_to_uuid(first_name)    # Umwandeln von int zu UUID
-        last_name = int_to_uuid(last_name)    # Umwandeln von int zu UUID
-        last_update = int_to_uuid(last_update)    # Umwandeln von int zu UUID
 
         cs_session.execute(insert_statement, (actor_id, first_name, last_name, last_update))
 
@@ -452,42 +449,20 @@ def main():
     #------Aufgabe 4.c
     print()
     print("Aufgabe 4.c) Vor- und Nachnamen der 10 Schauspieler mit den meisten Filmen, absteigend sortiert:")
-    # Create the actor_film_count table (if it doesn't exist)
-    cs_session.execute("""
-        CREATE TABLE IF NOT EXISTS actor_film_count (
-            actor_id UUID,
-            name TEXT,
-            number_films INT,
-            PRIMARY KEY (actor_id)
-        );
-    """)
 
-    # Get actor information
-    actor_info = cs_session.execute("SELECT actor_id, first_name, last_name FROM actor;")
+    # Daten aus 'film_actor' abrufen (Denormalisierung wird angenommen)
+    film_actor_data = cs_session.execute("SELECT actor_id, film_id FROM film_actor;")
 
-    # Count films per actor
-    actor_film_counts = {}
-    for actor_id in cs_session.execute("SELECT actor_id FROM film_actor"):
-        actor_id = actor_id[0]  # Extract the actor_id from the row tuple
-        actor_film_counts[actor_id] = actor_film_counts.get(actor_id, 0) + 1
+    # Zähle die Anzahl der Filme pro Schauspieler
+    actor_film_count = Counter(row.actor_id for row in film_actor_data)
 
-    # Insert into the actor_film_count table
-    insert_statement = cs_session.prepare("""
-        INSERT INTO actor_film_count (actor_id, name, number_films) 
-        VALUES (?, ?, ?);
-    """)
+    # Sortiere die Schauspieler nach Anzahl der Filme (absteigend) und nimm die Top 10
+    top_actors = actor_film_count.most_common(10)
 
-    for actor_id, count in actor_film_counts.items():
-        for actor in actor_info:
-            if actor.actor_id == actor_id:
-                name = f"{actor.first_name} {actor.last_name}"
-                cs_session.execute(insert_statement, (actor_id, name, count))
-                print(f"Aktor: {name}, Number of Films: {count}")
-
-    #absteigend sortieren und nur 10 ausgeben - folgt
-
-    print("Output folgt...")
-
+    # Schritt 4: Hole die Namen der Schauspieler basierend auf der actor_id
+    for actor_id, film_count in top_actors:
+        actor_info = cs_session.execute(f"SELECT first_name, last_name FROM actor WHERE actor_id = {actor_id};").one()
+        print(f"{actor_info.first_name} {actor_info.last_name} - {film_count} Filme")
 
     #------Aufgabe 4.d
     print()
