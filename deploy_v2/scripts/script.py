@@ -41,8 +41,8 @@ def execute_sql(conn, command):
         return []
 #--------------Funktion um mit staff_id ein neues Passwort zu vergeben-----------------------    
 def update_password(staff_id, new_password):
-    query = "UPDATE staff SET password = %s WHERE staff_id = %s"
-    cs_session.execute(query, (new_password, staff_id))
+    nosql_command = "UPDATE staff SET password = %s WHERE staff_id = %s"
+    cs_session.execute(nosql_command, (new_password, staff_id))
     print(f"Passwort für staff_id {staff_id} wurde erfolgreich aktualisiert.") 
 
 def main():
@@ -95,7 +95,7 @@ def main():
         inventory_id int,
         store_id int,
         film_id int,
-        PRIMARY KEY (store_id, film_id)
+        PRIMARY KEY (inventory_id)
     );"""
     cs_session.execute(nosql_command)
 
@@ -180,7 +180,7 @@ def main():
 
     #---------------------------------------------ACTOR---------------------------------------
 
-    # Tabelle 'film_actor' im Keyspace erstellen
+    # Tabelle 'actor' im Keyspace erstellen
     nosql_command = """
     CREATE TABLE IF NOT EXISTS actor (
         actor_id UUID PRIMARY KEY,
@@ -362,10 +362,9 @@ def main():
     # Tabelle 'city' im Keyspace erstellen
     nosql_command = """
         CREATE TABLE IF NOT EXISTS city (
-        city_id int,
+        city_id int PRIMARY KEY,
         city text,
-        country_id int,
-        PRIMARY KEY (city_id)
+        country_id int
     );"""
     cs_session.execute(nosql_command)
 
@@ -383,16 +382,20 @@ def main():
 
     # Jede Reihe aus der Postgres 'city' Tabelle in die Cassandra 'city' Tabelle kopieren
     for row in data:
-        cs_session.execute(insert_statement, row)
+        city_id = row[0]  # Angenommener int-Wert
+        city = row[1]   
+        country_id = row[2]  
+
+        cs_session.execute(insert_statement, (city_id, city, country_id))
+
 
     #---------------------------------------COUNTRY---------------------------------------
 
     # Tabelle 'country' im Keyspace erstellen
     nosql_command = """
         CREATE TABLE IF NOT EXISTS country (
-        country_id int,
-        country text,
-        PRIMARY KEY (country_id)
+        country_id int PRIMARY KEY,
+        country text
     );"""
     cs_session.execute(nosql_command)
 
@@ -410,7 +413,73 @@ def main():
 
     # Jede Reihe aus der Postgres 'country' Tabelle in die Cassandra 'country' Tabelle kopieren
     for row in data:
+        country_id = row[0]  # Angenommener int-Wert
+        country = row[1]    
+        
+        cs_session.execute(insert_statement, (country_id, country))
+
+    #---------------------------------------ADDRESS---------------------------------------
+
+    # Tabelle 'address' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS address (
+        address_id int,
+        address text,
+        district text,
+        city_id int,
+        postal_code text,
+        PRIMARY KEY (address_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # Daten aus der 'address' Tabelle in Postgres selektieren
+    sql_command = 'SELECT address_id, address, district, city_id, postal_code FROM address;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'address'
+    nosql_command = """
+    INSERT INTO address (
+        address_id, address, district, city_id, postal_code
+    ) VALUES (?, ?, ?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'address' Tabelle in die Cassandra 'address' Tabelle kopieren
+    for row in data:
         cs_session.execute(insert_statement, row)
+
+    #---------------------------------------STORE---------------------------------------
+
+    # Tabelle 'store' im Keyspace erstellen
+    nosql_command = """
+        CREATE TABLE IF NOT EXISTS store (
+        store_id int PRIMARY KEY,
+        manager_staff_id int,
+        address_id int
+    );"""
+    cs_session.execute(nosql_command)
+
+    # store_id, manager_staff_id, address_id aus der 'store' Tabelle in Postgres selektieren
+    sql_command = 'SELECT store_id, manager_staff_id, address_id FROM store;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'store'
+    nosql_command = """
+    INSERT INTO store (
+        store_id, manager_staff_id, address_id
+    ) VALUES (?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'store' Tabelle in die Cassandra 'store' Tabelle kopieren
+    for row in data:
+        store_id = row[0]  # Angenommener int-Wert
+        manager_staff_id = row[1]   
+        address_id = row[2] 
+
+        #store_id = int_to_uuid(store_id)
+        
+        cs_session.execute(insert_statement, (store_id, manager_staff_id, address_id))
 
     #---------------------------------------Film Count---------------------------------------
     
@@ -626,6 +695,72 @@ def main():
     result = cs_session.execute(nosql_command)
     for row in result:
         print(f"Staff ID: {row.staff_id}, Password: {row.password}")
+
+    try:
+        #------Aufgabe 5.b
+        print()
+        print("Aufgabe 5.b) Verlegung des Inventars an einen neuen Standort: Feldstraße 143, 22880 Wedel, Germany")
+        city_name = 'Wedel'
+        address = 'Feldstraße 143'
+
+        # Abfragen der Country-ID von "Germany"
+        nosql_command = "SELECT country_id FROM country WHERE country = 'Germany' ALLOW FILTERING"
+        rows = cs_session.execute(nosql_command)
+        country_id = rows[0].country_id
+        
+        # Wedel als neue Stadt einfügen
+        nosql_command = "INSERT INTO city (city_id, city, country_id) VALUES (999, %s, %s)"
+        cs_session.execute(nosql_command, (city_name, country_id))
+        
+        # ID der neuen Stadt abfragen
+        # Hole die ID der neuen Stadt
+        nosql_command = "SELECT city_id FROM city WHERE city = %s AND country_id = %s ALLOW FILTERING"
+        rows = cs_session.execute(nosql_command, (city_name, country_id))
+        city_id = rows[0].city_id
+        
+        # Neue Adresse einfügen
+        nosql_command = "INSERT INTO address (address_id, address, city_id) VALUES (999, %s, %s)"
+        cs_session.execute(nosql_command, (address, city_id))
+
+        # Neuen Store erstellen
+        nosql_command = "INSERT INTO store (store_id, manager_staff_id, address_id) VALUES (3, 1, 999)"
+        cs_session.execute(nosql_command)
+        print("Inhalt der Tabelle 'store':")
+        nosql_command = "SELECT store_id, manager_staff_id, address_id FROM store;"
+        rows = cs_session.execute(nosql_command)
+        for row in rows:
+            print(f"Store ID: {row.store_id}, Manager-ID: {row.manager_staff_id}, Address-ID: {row.address_id}")
+
+        # Inventar in neuen Store verlegen
+        nosql_command = "UPDATE inventory SET store_id = 3 WHERE store_id = 1"
+        cs_session.execute(nosql_command)
+        nosql_command = "UPDATE inventory SET store_id = 3 WHERE store_id = 2"
+        cs_session.execute(nosql_command)
+
+        #Aktualisiert die store_id für alle Zeilen in der Tabelle 'inventory'.
+        # Schritt 1: Alle inventory_id-Werte abrufen
+        select_query = "SELECT * FROM inventory;"
+        rows = cs_session.execute(select_query)
+
+        for row in rows:
+            print(f"Inventory: {row.inventory_id} Store: {row.store_id}")
+
+        # Schritt 2: Jede Zeile einzeln aktualisieren
+        update_query = "UPDATE inventory SET store_id = 3 WHERE inventory_id = %s;"
+        for row in rows:
+            cs_session.execute(update_query, (row.inventory_id))
+
+
+        #Kontrollausgabe: 
+        print("Vorhandene Store-ID in der Tabelle Inventory:")
+        nosql_command = "SELECT store_id FROM inventory"
+        rows = cs_session.execute(nosql_command)
+        unique_store_ids = set(row.store_id for row in rows)
+        print(unique_store_ids)
+    except:
+        print("Fehler bei Kontrollabfrage: Error from server: code=2200 [Invalid query] message= Some partition key parts are missing: inventory_id ")
+    
+    
 
 try:
     print("\n--------------------------Python Script startet-----------------------------------")
