@@ -46,6 +46,7 @@ def update_password(staff_id, new_password):
     print(f"Passwort für staff_id {staff_id} wurde erfolgreich aktualisiert.") 
 
 def main():
+    # Tabellen
     #---------------------------------------FILM---------------------------------------
 
     # Tabelle 'film' im Keyspace erstellen
@@ -214,7 +215,7 @@ def main():
 
         cs_session.execute(insert_statement, (actor_id, first_name, last_name, last_update))
 
-     #---------------------------------------STAFF---------------------------------------
+    #---------------------------------------STAFF---------------------------------------
 
     # Tabelle 'rental' im Keyspace erstellen
     nosql_command = """
@@ -427,6 +428,7 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
+    # Abfragen
     #---------------------------------------AUFGABEN---------------------------------------
 
     #------Aufgabe 4.a
@@ -544,6 +546,10 @@ def main():
 
     for idx, row in enumerate(top_3, 1):
         print(f"{idx}. {row.category_name} - {row.rental_count} Ausleihen")
+
+    #------Aufgabe 4.i
+    print()
+    print("Aufgabe 4.i) Eine Sicht auf die Kunden mit allen relevanten Informationen:")
 
     #------Aufgabe 5.a
     print()
