@@ -177,6 +177,46 @@ def main():
 
         cs_session.execute(insert_statement, (actor_id, film_id))
 
+    #---------------------------------------------ACTOR---------------------------------------
+
+    # Tabelle 'film_actor' im Keyspace erstellen
+    nosql_command = """
+    CREATE TABLE IF NOT EXISTS actor (
+        actor_id UUID,
+        first_name UUID,
+        last_name UUID,
+        last_update timestamp,
+        PRIMARY KEY (actor_id)
+    );"""
+    cs_session.execute(nosql_command)
+
+    # actor_id und name aus der 'actor' Tabelle in Postgres selektieren
+    sql_command = 'SELECT actor_id, first_name, last_name, last_update;'
+    data = execute_sql(pg_conn, sql_command)
+
+    # Blank Insert Kommando für Cassandra Tabelle 'film_actor'
+    nosql_command = """
+    INSERT INTO actor (
+        actor_id, first_name, last_name, last_update
+    ) VALUES (?, ?, ?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres 'actor' Tabelle in die Cassandra 'film_actor' Tabelle kopieren
+    for row in data:
+        actor_id = row[0]  # Angenommener int-Wert
+        first_name = row[1]   # Angenommener int-Wert
+        last_name = row[2]   # Angenommener int-Wert
+        last_update = row[3]   # Angenommener int-Wert
+
+        # Wenn UUID erwartet wird, aber int vorhanden ist, UUID erstellen
+        actor_id = int_to_uuid(actor_id)  # Umwandeln von int zu UUID
+        first_name = int_to_uuid(first_name)    # Umwandeln von int zu UUID
+        last_name = int_to_uuid(last_name)    # Umwandeln von int zu UUID
+        last_update = int_to_uuid(last_update)    # Umwandeln von int zu UUID
+
+        cs_session.execute(insert_statement, (actor_id, first_name, last_name, last_update))
+
      #---------------------------------------STAFF---------------------------------------
 
     # Tabelle 'rental' im Keyspace erstellen
@@ -396,8 +436,8 @@ def main():
     print()
     print("Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:")
     nosql_command = "SELECT COUNT(*) FROM film;"
-    result = cs_session.execute(nosql_command)
-    print(result.one()[0])
+    result_4a = cs_session.execute(nosql_command)
+    print(result_4a.one()[0])
 
     #------Aufgabe 4.b
     print()
@@ -411,44 +451,43 @@ def main():
 
     #------Aufgabe 4.c
     print()
-    print("Aufgabe 4.c) Die Vor- und Nachnamen der 10 Schauspieler mit den meisten Filmen:")
-    # Zunächst alle Einträge aus der 'film_actor' Tabelle abfragen
-    nosql_command = "SELECT actor_id, film_id FROM film_actor;"
-    result = cs_session.execute(nosql_command)
+    print("Aufgabe 4.c) Vor- und Nachnamen der 10 Schauspieler mit den meisten Filmen, absteigend sortiert:")
+    # Create the actor_film_count table (if it doesn't exist)
+    cs_session.execute("""
+        CREATE TABLE IF NOT EXISTS actor_film_count (
+            actor_id UUID,
+            name TEXT,
+            number_films INT,
+            PRIMARY KEY (actor_id)
+        );
+    """)
 
-    # Zähle die Anzahl der Filme pro Schauspieler
-    actor_film_counts = Counter(row.actor_id for row in result)
+    # Get actor information
+    actor_info = cs_session.execute("SELECT actor_id, first_name, last_name FROM actor;")
 
-    # Top 10 Schauspieler nach Filmanzahl ermitteln
-    top_actor_ids = [actor_id for actor_id, _ in actor_film_counts.most_common(10)]
+    # Count films per actor
+    actor_film_counts = {}
+    for actor_id in cs_session.execute("SELECT actor_id FROM film_actor"):
+        actor_id = actor_id[0]  # Extract the actor_id from the row tuple
+        actor_film_counts[actor_id] = actor_film_counts.get(actor_id, 0) + 1
 
-    # Überprüfe und konvertiere die actor_ids in UUID, falls sie noch nicht als UUID vorliegen
-    top_actor_ids = [uuid.UUID(str(actor_id)) if isinstance(actor_id, str) else actor_id for actor_id in top_actor_ids]
+    # Insert into the actor_film_count table
+    insert_statement = cs_session.prepare("""
+        INSERT INTO actor_film_count (actor_id, name, number_films) 
+        VALUES (?, ?, ?);
+    """)
 
-    # Stelle sicher, dass Platzhalter richtig gesetzt sind (Anzahl der Platzhalter muss mit der Länge von top_actor_ids übereinstimmen)
-    placeholders = ', '.join(['?'] * len(top_actor_ids))  # Platzhalter für die IDs
+    for actor_id, count in actor_film_counts.items():
+        for actor in actor_info:
+            if actor.actor_id == actor_id:
+                name = f"{actor.first_name} {actor.last_name}"
+                cs_session.execute(insert_statement, (actor_id, name, count))
+                print(f"Aktor: {name}, Number of Films: {count}")
 
-    # Cassandra-Abfrage mit 'IN' und Platzhaltern
-    nosql_command = f"SELECT actor_id, first_name, last_name FROM actor WHERE actor_id IN ({placeholders});"
+    #absteigend sortieren und nur 10 ausgeben - folgt
 
-    # Versuche die Abfrage auszuführen
-    try:
-        # Führe die Abfrage aus, indem du top_actor_ids als Parameter übergibst
-        actors_result = cs_session.execute(nosql_command, top_actor_ids)
+    print("Output folgt...")
 
-        # Ergebnisse kombinieren und ausgeben
-        top_actors = [(f"{row.first_name} {row.last_name}", actor_film_counts[row.actor_id]) for row in actors_result]
-
-        # Sortiere die Schauspieler nach der Anzahl der Filme in absteigender Reihenfolge
-        top_actors_sorted = sorted(top_actors, key=lambda x: x[1], reverse=True)
-
-        # Ausgabe der Schauspieler und der Anzahl der Filme
-        print("Top 10 Schauspieler mit den meisten Filmen:")
-        for name, count in top_actors_sorted:
-            print(f"{name}: {count} Filme")
-
-    except Exception as e:
-        print(f"Fehler bei der Abfrage: {e}")
 
     #------Aufgabe 4.d
     print()
