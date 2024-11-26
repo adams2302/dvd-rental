@@ -548,41 +548,6 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
-    #---------------------------------Film Count WHERE LENGTH < 60---------------------------------------
-    
-    # Erstellt die Tabelle film_rental_count_by_title.
-    nosql_command = """
-    CREATE TABLE IF NOT EXISTS short_film_count (
-        title TEXT PRIMARY KEY,
-        rental_count INT
-    );
-    """
-    cs_session.execute(nosql_command)
-    
-    # title und rental_count aus Postgres selektieren
-    sql_command = """
-    SELECT film_id FROM film WHERE length < 60 
-    JOIN film ON inventory.film_id = film.film_id
-    JOIN film.title AS title, COUNT(rental.rental_id) AS rental_count
-    FROM rental
-    JOIN inventory ON rental.inventory_id = inventory.inventory_id
-    GROUP BY film.title;
-    """
-    data = execute_sql(pg_conn, sql_command)
-    
-    # Blank Insert Kommando für Cassandra Tabelle 'film_rental_count_by_title'
-    nosql_command = """
-    INSERT INTO film_rental_count_by_title (
-        title, 
-        rental_count
-    )VALUES (?, ?)
-    """
-    insert_statement = cs_session.prepare(nosql_command)
-
-    # Jede Reihe aus der Postgres-Abfrage in die Cassandra 'film_rental_count_by_title' Tabelle kopieren
-    for row in data:
-        cs_session.execute(insert_statement, row)
-
     # Abfragen
     #---------------------------------------AUFGABEN---------------------------------------
 
@@ -811,7 +776,7 @@ def main():
         nosql_command = f"DELETE FROM film WHERE film_id = {film_id}"
         cs_session.execute(nosql_command)
         print(f"  → Eintrag in film gelöscht: film_id {film_id}")
-        print("\nLöschen der zugehörigen Einträge in inventory :")
+        print("Löschen der zugehörigen Einträge in inventory :")
 
         #Abfrage für inventory_id, die mit der film_id verknüpft sind
         nosql_command = f"SELECT inventory_id FROM inventory WHERE film_id = {film_id} ALLOW FILTERING"
@@ -836,6 +801,7 @@ def main():
                 nosql_command = f"DELETE FROM rental WHERE rental_id = {rental_id}"
                 cs_session.execute(nosql_command)
                 print(f"Eintrag in rental gelöscht: rental_id {rental_id}")
+        print("\n")
 
     print("\nAlle betroffenen Datensätze wurden erfolgreich gelöscht.")
 
