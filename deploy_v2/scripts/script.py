@@ -548,6 +548,41 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
+    #---------------------------------Film Count WHERE LENGTH < 60---------------------------------------
+    
+    # Erstellt die Tabelle film_rental_count_by_title.
+    nosql_command = """
+    CREATE TABLE IF NOT EXISTS short_film_count (
+        title TEXT PRIMARY KEY,
+        rental_count INT
+    );
+    """
+    cs_session.execute(nosql_command)
+    
+    # title und rental_count aus Postgres selektieren
+    sql_command = """
+    SELECT film_id FROM film WHERE length < 60 
+    JOIN film ON inventory.film_id = film.film_id
+    JOIN film.title AS title, COUNT(rental.rental_id) AS rental_count
+    FROM rental
+    JOIN inventory ON rental.inventory_id = inventory.inventory_id
+    GROUP BY film.title;
+    """
+    data = execute_sql(pg_conn, sql_command)
+    
+    # Blank Insert Kommando für Cassandra Tabelle 'film_rental_count_by_title'
+    nosql_command = """
+    INSERT INTO film_rental_count_by_title (
+        title, 
+        rental_count
+    )VALUES (?, ?)
+    """
+    insert_statement = cs_session.prepare(nosql_command)
+
+    # Jede Reihe aus der Postgres-Abfrage in die Cassandra 'film_rental_count_by_title' Tabelle kopieren
+    for row in data:
+        cs_session.execute(insert_statement, row)
+
     # Abfragen
     #---------------------------------------AUFGABEN---------------------------------------
 
@@ -760,7 +795,51 @@ def main():
     except:
         print("Fehler bei Kontrollabfrage: Error from server: code=2200 [Invalid query] message= Some partition key parts are missing: inventory_id ")
     
-    
+    #------Aufgabe 6.a und 6.b
+    print()
+    print("Aufgabe 6.a)  Löscht alle Filme, die weniger als 60 Minuten Spielzeit haben und \nAufgabe 6.b)  Löscht alle damit zusammenhängenden Entleihungen:")
+
+    # Abfrage für Filme mit einer Länge < 60
+    nosql_command = "SELECT film_id FROM film WHERE length < 60 ALLOW FILTERING"
+    film_rows = cs_session.execute(nosql_command)
+    film_ids_to_delete = [row.film_id for row in film_rows]
+    print(f"Zu löschende Filme (film_id): {film_ids_to_delete}")
+
+    print("\nLöschen der Filme aus der Tabelle film:")
+    # Lösche die Filme aus der Tabelle film
+    for film_id in film_ids_to_delete:
+        nosql_command = f"DELETE FROM film WHERE film_id = {film_id}"
+        cs_session.execute(nosql_command)
+        print(f"  → Eintrag in film gelöscht: film_id {film_id}")
+        print("\nLöschen der zugehörigen Einträge in inventory :")
+
+        #Abfrage für inventory_id, die mit der film_id verknüpft sind
+        nosql_command = f"SELECT inventory_id FROM inventory WHERE film_id = {film_id} ALLOW FILTERING"
+        inventory_rows = cs_session.execute(nosql_command)
+        inventory_ids_to_delete = [row.inventory_id for row in inventory_rows]
+        print(f"Gefundene inventory_id für film_id {film_id}: {inventory_ids_to_delete}")
+
+        for inventory_id in inventory_ids_to_delete:
+            #Lösche aus inventory basierend auf film_id
+            nosql_command = f"DELETE FROM inventory WHERE inventory_id = {inventory_id}"
+            cs_session.execute(nosql_command)
+            print(f"Einträge in inventory gelöscht für inventory_id: {inventory_id}")
+
+            #Abfrage für rental_id, die mit der inventory_id verknüpft sind
+            nosql_command = f"SELECT rental_id FROM rental WHERE inventory_id = {inventory_id} ALLOW FILTERING"
+            rental_rows = cs_session.execute(nosql_command)
+            rental_ids_to_delete = [row.rental_id for row in rental_rows]
+            print(f"Gefundene rental_id für inventory_id {inventory_id}: {rental_ids_to_delete}")
+
+            # Lösche aus rental_id basierend auf inventory_id
+            for rental_id in rental_ids_to_delete:
+                nosql_command = f"DELETE FROM rental WHERE rental_id = {rental_id}"
+                cs_session.execute(nosql_command)
+                print(f"Eintrag in rental gelöscht: rental_id {rental_id}")
+
+    print("\nAlle betroffenen Datensätze wurden erfolgreich gelöscht.")
+
+    print("\n---------------------Alle CQL-Anfragen wurden bearbeitet--------------------------")
 
 try:
     print("\n--------------------------Python Script startet-----------------------------------")
