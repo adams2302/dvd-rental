@@ -669,10 +669,10 @@ def main():
 
     #------Aufgabe 4.i
     print()
-    print("Aufgabe 4.i) Eine Sicht auf die Kunden mit allen relevanten Informationen:\n")
+    print("Aufgabe 4.i) Eine Sicht auf die Kunden mit allen relevanten Informationen (auf 10 Kunden gefiltert):\n")
 
     # Abfrage, um alle Kundeninformationen abzurufen
-    rows = cs_session.execute("SELECT id, name, address, postal_code, phone, city, country, notes, sid FROM customer_list;")
+    rows = cs_session.execute("SELECT id, name, address, postal_code, phone, city, country, notes, sid FROM customer_list LIMIT 10;").all()
 
     # Header mit den neuen Spaltennamen
     print(f"{'id':<5}{'name':<22}{'address':<40}{'zip':<6}{'phone':<14}{'city':<27}{'country':<20}{'notes':<7}{'sid':<2}")
@@ -770,40 +770,71 @@ def main():
     film_ids_to_delete = [row.film_id for row in film_rows]
     print(f"Zu löschende Filme (film_id): {film_ids_to_delete}")
 
-    print("\nLöschen der Filme aus der Tabelle film:")
+    #print("\nLöschen der Filme aus der Tabelle film:")
     # Lösche die Filme aus der Tabelle film
     for film_id in film_ids_to_delete:
         nosql_command = f"DELETE FROM film WHERE film_id = {film_id}"
         cs_session.execute(nosql_command)
-        print(f"  → Eintrag in film gelöscht: film_id {film_id}")
-        print("Löschen der zugehörigen Einträge in inventory :")
+        #print(f"  → Eintrag in film gelöscht: film_id {film_id}")
+        #print("Löschen der zugehörigen Einträge in inventory :")
 
         #Abfrage für inventory_id, die mit der film_id verknüpft sind
         nosql_command = f"SELECT inventory_id FROM inventory WHERE film_id = {film_id} ALLOW FILTERING"
         inventory_rows = cs_session.execute(nosql_command)
         inventory_ids_to_delete = [row.inventory_id for row in inventory_rows]
-        print(f"Gefundene inventory_id für film_id {film_id}: {inventory_ids_to_delete}")
+        #print(f"Gefundene inventory_id für film_id {film_id}: {inventory_ids_to_delete}")
 
         for inventory_id in inventory_ids_to_delete:
             #Lösche aus inventory basierend auf film_id
             nosql_command = f"DELETE FROM inventory WHERE inventory_id = {inventory_id}"
             cs_session.execute(nosql_command)
-            print(f"Einträge in inventory gelöscht für inventory_id: {inventory_id}")
+            #print(f"Einträge in inventory gelöscht für inventory_id: {inventory_id}")
 
             #Abfrage für rental_id, die mit der inventory_id verknüpft sind
             nosql_command = f"SELECT rental_id FROM rental WHERE inventory_id = {inventory_id} ALLOW FILTERING"
             rental_rows = cs_session.execute(nosql_command)
             rental_ids_to_delete = [row.rental_id for row in rental_rows]
-            print(f"Gefundene rental_id für inventory_id {inventory_id}: {rental_ids_to_delete}")
+            #print(f"Gefundene rental_id für inventory_id {inventory_id}: {rental_ids_to_delete}")
 
             # Lösche aus rental_id basierend auf inventory_id
             for rental_id in rental_ids_to_delete:
                 nosql_command = f"DELETE FROM rental WHERE rental_id = {rental_id}"
                 cs_session.execute(nosql_command)
-                print(f"Eintrag in rental gelöscht: rental_id {rental_id}")
-        print("\n")
+                #print(f"Eintrag in rental gelöscht: rental_id {rental_id}")
+        #print("Gefundene inventory_ids und rental_ids zur film_id, sowie der film selbst wurden gelöscht \n")
 
-    print("\nAlle betroffenen Datensätze wurden erfolgreich gelöscht.")
+    # Überprüfen, ob noch Filme mit Länge < 60 vorhanden sind
+    nosql_command = "SELECT film_id FROM film WHERE length < 60 ALLOW FILTERING"
+    remaining_films = cs_session.execute(nosql_command)
+
+    if remaining_films:
+        print("Die folgenden Filme mit Länge < 60 sind noch vorhanden:")
+        for row in remaining_films:
+            print(f"  → film_id: {row.film_id}")
+    else:
+        print("Alle Filme mit Länge < 60 wurden erfolgreich gelöscht.")
+
+    # Überprüfen, ob verwaiste Rentals existieren
+    remaining_rentals_found = False
+
+    for film_id in film_ids_to_delete:
+        # Alle inventory_id für die aktuelle film_id abrufen
+        nosql_command = f"SELECT inventory_id FROM inventory WHERE film_id = {film_id} ALLOW FILTERING"
+        inventory_rows = cs_session.execute(nosql_command)
+        inventory_ids_to_check = [row.inventory_id for row in inventory_rows]
+        
+        # Überprüfen, ob es noch Rentals für diese inventory_id gibt
+        for inventory_id in inventory_ids_to_check:
+            nosql_command = f"SELECT rental_id FROM rental WHERE inventory_id = {inventory_id} ALLOW FILTERING"
+            rental_rows = cs_session.execute(nosql_command)
+            
+            for row in rental_rows:
+                print(f"  → Verwaister rental gefunden: rental_id {row.rental_id}")
+                remaining_rentals_found = True
+
+    if not remaining_rentals_found:
+        print("Alle zugehörigen Rentals wurden erfolgreich gelöscht.")
+
 
     print("\n---------------------Alle CQL-Anfragen wurden bearbeitet--------------------------")
 
