@@ -696,69 +696,61 @@ def main():
     for row in result:
         print(f"Staff ID: {row.staff_id}, Password: {row.password}")
 
-    try:
-        #------Aufgabe 5.b
-        print()
-        print("Aufgabe 5.b) Verlegung des Inventars an einen neuen Standort: Feldstraße 143, 22880 Wedel, Germany")
-        city_name = 'Wedel'
-        address = 'Feldstraße 143'
+    #------Aufgabe 5.b
+    print()
+    print("Aufgabe 5.b) Verlegung des Inventars an einen neuen Standort: Feldstraße 143, 22880 Wedel, Germany")
+    city_name = 'Wedel'
+    address = 'Feldstraße 143'
 
-        # Abfragen der Country-ID von "Germany"
-        nosql_command = "SELECT country_id FROM country WHERE country = 'Germany' ALLOW FILTERING"
-        rows = cs_session.execute(nosql_command)
-        country_id = rows[0].country_id
-        
-        # Wedel als neue Stadt einfügen
-        nosql_command = "INSERT INTO city (city_id, city, country_id) VALUES (999, %s, %s)"
-        cs_session.execute(nosql_command, (city_name, country_id))
-        
-        # ID der neuen Stadt abfragen
-        # Hole die ID der neuen Stadt
-        nosql_command = "SELECT city_id FROM city WHERE city = %s AND country_id = %s ALLOW FILTERING"
-        rows = cs_session.execute(nosql_command, (city_name, country_id))
-        city_id = rows[0].city_id
-        
-        # Neue Adresse einfügen
-        nosql_command = "INSERT INTO address (address_id, address, city_id) VALUES (999, %s, %s)"
-        cs_session.execute(nosql_command, (address, city_id))
+    # Abfragen der Country-ID von "Germany"
+    nosql_command = "SELECT country_id FROM country WHERE country = 'Germany' ALLOW FILTERING"
+    rows = cs_session.execute(nosql_command)
+    country_id = rows[0].country_id
+    
+    # Wedel als neue Stadt einfügen
+    nosql_command = "INSERT INTO city (city_id, city, country_id) VALUES (999, %s, %s)"
+    cs_session.execute(nosql_command, (city_name, country_id))
+    
+    # ID der neuen Stadt abfragen
+    # Hole die ID der neuen Stadt
+    nosql_command = "SELECT city_id FROM city WHERE city = %s AND country_id = %s ALLOW FILTERING"
+    rows = cs_session.execute(nosql_command, (city_name, country_id))
+    city_id = rows[0].city_id
+    
+    # Neue Adresse einfügen
+    nosql_command = "INSERT INTO address (address_id, address, city_id) VALUES (999, %s, %s)"
+    cs_session.execute(nosql_command, (address, city_id))
 
-        # Neuen Store erstellen
-        nosql_command = "INSERT INTO store (store_id, manager_staff_id, address_id) VALUES (3, 1, 999)"
-        cs_session.execute(nosql_command)
-        print("Inhalt der Tabelle 'store':")
-        nosql_command = "SELECT store_id, manager_staff_id, address_id FROM store;"
-        rows = cs_session.execute(nosql_command)
-        for row in rows:
-            print(f"Store ID: {row.store_id}, Manager-ID: {row.manager_staff_id}, Address-ID: {row.address_id}")
+    # Neuen Store erstellen
+    nosql_command = "INSERT INTO store (store_id, manager_staff_id, address_id) VALUES (3, 1, 999)"
+    cs_session.execute(nosql_command)
+    print("Inhalt der Tabelle 'store':")
+    nosql_command = "SELECT store_id, manager_staff_id, address_id FROM store;"
+    rows = cs_session.execute(nosql_command)
+    for row in rows:
+        print(f"Store ID: {row.store_id}, Manager-ID: {row.manager_staff_id}, Address-ID: {row.address_id}")
 
-        # Inventar in neuen Store verlegen
-        nosql_command = "UPDATE inventory SET store_id = 3 WHERE store_id = 1"
-        cs_session.execute(nosql_command)
-        nosql_command = "UPDATE inventory SET store_id = 3 WHERE store_id = 2"
-        cs_session.execute(nosql_command)
+    #Kontrollausgabe: 
+    print("Vorhandene Store-ID in der Tabelle Inventory:")
+    nosql_command = "SELECT store_id FROM inventory"
+    rows = cs_session.execute(nosql_command)
+    unique_store_ids = set(row.store_id for row in rows)
+    print(unique_store_ids)
 
-        #Aktualisiert die store_id für alle Zeilen in der Tabelle 'inventory'.
-        # Schritt 1: Alle inventory_id-Werte abrufen
-        select_query = "SELECT * FROM inventory;"
-        rows = cs_session.execute(select_query)
+    print("Verlegung des Inventars wird durchgefürt...")
+    select_query = "SELECT inventory_id FROM inventory"
+    rows = cs_session.execute(select_query)
+    update_query = "UPDATE inventory SET store_id = %s WHERE inventory_id = %s;"
+    for row in rows:
+        cs_session.execute(update_query, (3, row.inventory_id))
 
-        for row in rows:
-            print(f"Inventory: {row.inventory_id} Store: {row.store_id}")
-
-        # Schritt 2: Jede Zeile einzeln aktualisieren
-        update_query = "UPDATE inventory SET store_id = 3 WHERE inventory_id = %s;"
-        for row in rows:
-            cs_session.execute(update_query, (row.inventory_id))
-
-
-        #Kontrollausgabe: 
-        print("Vorhandene Store-ID in der Tabelle Inventory:")
-        nosql_command = "SELECT store_id FROM inventory"
-        rows = cs_session.execute(nosql_command)
-        unique_store_ids = set(row.store_id for row in rows)
-        print(unique_store_ids)
-    except:
-        print("Fehler bei Kontrollabfrage: Error from server: code=2200 [Invalid query] message= Some partition key parts are missing: inventory_id ")
+    #Kontrollausgabe: 
+    print("Vorhandene Store-ID in der Tabelle Inventory:")
+    nosql_command = "SELECT store_id FROM inventory"
+    rows = cs_session.execute(nosql_command)
+    unique_store_ids = set(row.store_id for row in rows)
+    print(unique_store_ids)
+    
     
     #------Aufgabe 6.a und 6.b
     print()
