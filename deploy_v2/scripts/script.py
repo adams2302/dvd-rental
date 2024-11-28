@@ -554,34 +554,42 @@ def main():
     #------Aufgabe 4.a
     print()
     print("Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:")
-    nosql_command = "SELECT COUNT(*) FROM film;"
-    result_4a = cs_session.execute(nosql_command)
-    print(result_4a.one()[0])
+    nosql_command = "SELECT * FROM film;"
+    rows = cs_session.execute(nosql_command)
+    
+    # Anzahl der film_id-Einträge berechnen
+    count = sum(1 for _ in rows)  # Zählt alle Zeilen
+
+    #Print
+    print(f"Anzahl der Filme: {count}")
 
     #------Aufgabe 4.b
     print()
     print("Aufgabe 4.b) Anzahl der unterschiedlichen Filme je Standort:")
-    result = cs_session.execute("SELECT store_id, film_id FROM inventory;")
-    store_counts = {}
-    for row in result:
-        store_counts[row.store_id] = store_counts.get(row.store_id, 0) + 1
-    for store_id, count in store_counts.items():
-        print(f"Store ID {store_id}: {count} unique films")
+    # Datenabfrage definieren und ausführen
+    rows = cs_session.execute("SELECT store_id, film_id FROM inventory;")
+    # Daten der Tabelle in Python laden und in Liste "store_films" die Anzahl der Filme je Store zählen
+    store_films = {}
+    for row in rows:
+        store_id = row.store_id
+        film_id = row.film_id
+        if store_id not in store_films:
+            store_films[store_id] = set()
+        store_films[store_id].add(film_id)
+    # Anzahl der Filme je Store ausgeben
+    for store_id, films in store_films.items():
+        print(f"Store ID: {store_id}, Anzahl unterschiedlicher Filme: {len(films)}")
 
     #------Aufgabe 4.c
     print()
     print("Aufgabe 4.c) Vor- und Nachnamen der 10 Schauspieler mit den meisten Filmen, absteigend sortiert:")
-
-    # Daten aus 'film_actor' abrufen (Denormalisierung wird angenommen)
+    # Daten aus 'film_actor' abrufen
     film_actor_data = cs_session.execute("SELECT actor_id, film_id FROM film_actor;")
-
     # Zähle die Anzahl der Filme pro Schauspieler
     actor_film_count = Counter(row.actor_id for row in film_actor_data)
-
     # Sortiere die Schauspieler nach Anzahl der Filme (absteigend) und nimm die Top 10
     top_actors = actor_film_count.most_common(10)
-
-    # Schritt 4: Hole die Namen der Schauspieler basierend auf der actor_id
+    # Hole die Namen der Schauspieler basierend auf der actor_id und gib sie aus
     for actor_id, film_count in top_actors:
         actor_info = cs_session.execute(f"SELECT first_name, last_name FROM actor WHERE actor_id = {actor_id};").one()
         print(f"{actor_info.first_name} {actor_info.last_name} - {film_count} Filme")
@@ -600,7 +608,7 @@ def main():
     for row in payment_rows:
         if row.staff_id is not None:
             revenue_by_staff[row.staff_id] += row.amount
-    # Ergebnisse mit den Mitarbeitern verknüpfen
+    # Ergebnisse mit den Mitarbeitern verknüpfen und ausgeben
     for staff in staff_rows:
         staff_id = staff.staff_id
         revenue = revenue_by_staff.get(staff_id, 0)
@@ -609,10 +617,12 @@ def main():
     #------Aufgabe 4.e
     print()
     print("Aufgabe 4.e) Die IDs der 10 Kunden mit den meisten Entleihungen:")
+    # Alle Kunden-IDs abfragen
     nosql_command = "SELECT customer_id FROM rental;"
     result = cs_session.execute(nosql_command)
-    rental_counts = Counter(row.customer_id for row in result)  # Replaced 'rows' with 'result'
-    top_customers = rental_counts.most_common(10) # Top 10 customers based on rental count
+    # Zählen der IDs und die zehn häufigsten IDs in Variable "top_customers" speichern und ausgeben
+    rental_counts = Counter(row.customer_id for row in result) 
+    top_customers = rental_counts.most_common(10) 
     print("Top 10 Kunden mit den meisten Ausleihen:")
     for customer_id, count in top_customers:
         print(f"Customer ID: {customer_id}, Number of Rentals: {count}")
@@ -648,11 +658,11 @@ def main():
     #------Aufgabe 4.g
     print()
     print("Aufgabe 4.g) Die 10 meistgesehenen Filme unter Angabe des Titels, absteigend sortiert:")
-    
+    # Ausleiheanzahl je Titel aus zuvor erstellter Tabelle abrufen, sortieren und die Top-10 ermitteln.
     result = cs_session.execute("SELECT title, rental_count FROM film_rental_count_by_title")
     sorted_result = sorted(result, key=lambda x: x.rental_count, reverse=True)
     top_10 = sorted_result[:10]
-
+    # Daten mit Platzierung ausgeben
     for idx, row in enumerate(top_10, 1):
         print(f"{idx}. {row.title} - {row.rental_count} Ausleihen")
 
