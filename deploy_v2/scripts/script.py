@@ -476,9 +476,6 @@ def main():
         store_id = row[0]  # Angenommener int-Wert
         manager_staff_id = row[1]   
         address_id = row[2] 
-
-        #store_id = int_to_uuid(store_id)
-        
         cs_session.execute(insert_statement, (store_id, manager_staff_id, address_id))
 
     #---------------------------------------Film Count---------------------------------------
@@ -514,8 +511,7 @@ def main():
     # Jede Reihe aus der Postgres-Abfrage in die Cassandra 'film_rental_count_by_title' Tabelle kopieren
     for row in data:
         cs_session.execute(insert_statement, row)
-    
-    # neue Tabellen
+  
     #---------------------------------------Category Count---------------------------------------
 
     # Erstellt die Tabelle category_rental_count.
@@ -548,20 +544,20 @@ def main():
     for row in data:
         cs_session.execute(insert_statement, row)
 
-    # Abfragen
     #---------------------------------------AUFGABEN---------------------------------------
 
     #------Aufgabe 4.a
     print()
     print("Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:")
-    nosql_command = "SELECT * FROM film;"
+    nosql_command = "SELECT * FROM inventory;"
     rows = cs_session.execute(nosql_command)
-    
-    # Anzahl der film_id-Einträge berechnen
-    count = sum(1 for _ in rows)  # Zählt alle Zeilen
+    # Zeilen manuell zählen
+    count = 0
+    for row in rows:
+        count += 1
 
-    #Print
-    print(f"Anzahl der Filme: {count}")
+    print(f"Anzahl vorhandener Filme: {count}")
+
 
     #------Aufgabe 4.b
     print()
@@ -623,7 +619,6 @@ def main():
     # Zählen der IDs und die zehn häufigsten IDs in Variable "top_customers" speichern und ausgeben
     rental_counts = Counter(row.customer_id for row in result) 
     top_customers = rental_counts.most_common(10) 
-    print("Top 10 Kunden mit den meisten Ausleihen:")
     for customer_id, count in top_customers:
         print(f"Customer ID: {customer_id}, Number of Rentals: {count}")
 
@@ -651,7 +646,6 @@ def main():
     # Nach Umsatz sortieren und Top 10 auswählen
     top_customers = sorted(customer_revenues, key=lambda x: x[2], reverse=True)[:10]
     # Ergebnisse drucken
-    print("Top 10 Kunden nach Umsatz:")
     for name, store, revenue in top_customers:
         print(f"Name: {name}, Store: {store}, Revenue: {revenue:.2f}")
 
