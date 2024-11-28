@@ -549,15 +549,15 @@ def main():
     #------Aufgabe 4.a
     print()
     print("Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:")
-    nosql_command = "SELECT * FROM inventory;"
+    # Daten der Tabell invventory abrufen
+    nosql_command = "SELECT inventory_id, store_id FROM inventory;"
     rows = cs_session.execute(nosql_command)
-    # Zeilen manuell zählen
+    # Zeilen in Python zählen, da Select COUNT(*) auf 1000 Zeilen begrenzt wird
     count = 0
     for row in rows:
         count += 1
-
+    # Ergebnis ausgeben
     print(f"Anzahl vorhandener Filme: {count}")
-
 
     #------Aufgabe 4.b
     print()
