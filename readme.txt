@@ -4,6 +4,7 @@ Gruppenmitglieder: Adrian Adams und Lucas Knieling
 
 Die Entwicklung des abgegebenen Codes hat im Stils des Pair-Programmings stattgefunden.
 Die Aufwandsanteile belaufen sich auf 50% je Gruppenmitglied.
+Zur Entwicklung und Sicherung des Codes wurde ein GitHub Repository erstellt und gepflegt.
 
 
 Start der Applikation:
