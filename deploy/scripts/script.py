@@ -629,6 +629,7 @@ def main():
 
 
     # Update-Abfragen:
+    print("\nDelete-Abfragen:")
     #----------------------------------------Aufgabe 5.a--------------------------------------------------------------
     print("\nAufgabe 5.a) Vergabe eines neuen, sicheren Passworts für alle Mitarbeiter:")
     # Nutzen der eingangs erstellen Funktion zum Updaten eines Passworts
@@ -685,6 +686,7 @@ def main():
 
 
     # Delete-Abfragen
+    print("\nDelete-Abfragen:")
     #--------------------------------------Aufgabe 6.a und 6.b---------------------------------------------------------------
     print("\nAufgabe 6.a)  Löscht alle Filme, die weniger als 60 Minuten Spielzeit haben und \nAufgabe 6.b)  Löscht alle damit zusammenhängenden Entleihungen:")
     # Abfrage für Filme mit einer Länge < 60
