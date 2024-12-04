@@ -683,7 +683,12 @@ def main():
     update_query = "UPDATE inventory SET store_id = %s WHERE inventory_id = %s;"
     for row in rows:
         cs_session.execute(update_query, (3, row.inventory_id))
-
+    # Erneute Kontrollausgabe der Store-ID nach Verlegung des Inventars: 
+    print("Vorhandene Store-ID in der Tabelle Inventory nach Verlegung des Inventars:")
+    nosql_command = "SELECT store_id FROM inventory"
+    rows = cs_session.execute(nosql_command)
+    unique_store_ids = set(row.store_id for row in rows)
+    print(unique_store_ids)
 
     # Delete-Abfragen
     print("\nDelete-Abfragen:")
