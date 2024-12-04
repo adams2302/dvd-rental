@@ -1,0 +1,113 @@
+--------------------------Python Script startet-----------------------------------
+
+Aufgabe 4.a) Gesamtanzahl der verfügbaren Filme:
+Anzahl vorhandener Filme: 4581
+
+Aufgabe 4.b) Anzahl der unterschiedlichen Filme je Standort:
+Store ID: 1, Anzahl unterschiedlicher Filme: 759
+Store ID: 2, Anzahl unterschiedlicher Filme: 762
+
+Aufgabe 4.c) Vor- und Nachnamen der 10 Schauspieler mit den meisten Filmen, absteigend sortiert:
+Gina Degeneres - 42 Filme
+Walter Torn - 41 Filme
+Mary Keitel - 40 Filme
+Matthew Carrey - 39 Filme
+Sandra Kilmer - 37 Filme
+Scarlett Damon - 36 Filme
+Henry Berry - 35 Filme
+Val Bolger - 35 Filme
+Groucho Dunst - 35 Filme
+Angela Witherspoon - 35 Filme
+
+Aufgabe 4.d) Die Erlöse je Mitarbeiter:
+Staff ID: 1, Revenue: 30252.12
+Staff ID: 2, Revenue: 31059.92
+
+Aufgabe 4.e) Die IDs der 10 Kunden mit den meisten Entleihungen:
+Customer ID: 148, Number of Rentals: 46
+Customer ID: 526, Number of Rentals: 45
+Customer ID: 236, Number of Rentals: 42
+Customer ID: 144, Number of Rentals: 42
+Customer ID: 75, Number of Rentals: 41
+Customer ID: 469, Number of Rentals: 40
+Customer ID: 197, Number of Rentals: 40
+Customer ID: 178, Number of Rentals: 39
+Customer ID: 137, Number of Rentals: 39
+Customer ID: 468, Number of Rentals: 39
+
+Aufgabe 4.f) Die Vor- und Nachnamen sowie die Niederlassung der 10 Kunden, die das meiste Geld ausgegeben haben:
+Name: Eleanor Hunt, Store: 1, Revenue: 211.55
+Name: Karl Seal, Store: 2, Revenue: 208.58
+Name: Marion Snyder, Store: 2, Revenue: 194.61
+Name: Rhonda Kennedy, Store: 2, Revenue: 191.62
+Name: Clara Shaw, Store: 1, Revenue: 189.60
+Name: Tommy Collazo, Store: 1, Revenue: 183.63
+Name: Ana Bradley, Store: 2, Revenue: 167.67
+Name: Curtis Irby, Store: 2, Revenue: 167.62
+Name: Marcia Dean, Store: 1, Revenue: 166.61
+Name: Mike Way, Store: 1, Revenue: 162.67
+
+Aufgabe 4.g) Die 10 meistgesehenen Filme unter Angabe des Titels, absteigend sortiert:
+1. Bucket Brotherhood - 34 Ausleihen
+2. Rocketeer Mother - 33 Ausleihen
+3. Juggler Hardly - 32 Ausleihen
+4. Forward Temple - 32 Ausleihen
+5. Scalawag Duck - 32 Ausleihen
+6. Grit Clockwork - 32 Ausleihen
+7. Ridgemont Submarine - 32 Ausleihen
+8. Goodfellas Salute - 31 Ausleihen
+9. Hobbit Alien - 31 Ausleihen
+10. Apache Divine - 31 Ausleihen
+
+Aufgabe 4.h) Die 3 meistgesehenen Filmkategorien:
+1. Sports - 1179 Ausleihen
+2. Animation - 1166 Ausleihen
+3. Action - 1112 Ausleihen
+
+Aufgabe 4.i) Eine Sicht auf die Kunden mit allen relevanten Informationen (auf 10 Kunden gefiltert):
+
+id   name                  address                                 zip   phone         city                       country             notes  sid
+------------------------------------------------------------------------------------------------------------------------------------------------
+23   Sarah Lewis           1780 Hino Boulevard                     7716  902731229323  Liepaja                    Latvia              active 2
+114  Grace Ellis           442 Rae Bareli Place                    24321 886636413768  Duisburg                   Germany             active 2
+53   Heather Morris        17 Kabul Boulevard                      38594 697760867968  Nagareyama                 Japan               active 1
+110  Tiffany Jordan        804 Elista Drive                        61069 379804592943  Enshi                      China               active 2
+91   Lois Butler           1370 Le Mans Avenue                     52163 345679835036  Bandar Seri Begawan        Brunei              active 2
+128  Marjorie Tucker       1050 Garden Grove Avenue                4999  973047364353  Jastrzebie-Zdrj            Poland              active 1
+363  Roy Whiting           1658 Jastrzebie-Zdrj Loop               96584 568367775448  Nyeri                      Kenya               active 2
+251  Vickie Brewer         1966 Tonghae Street                     36481 567359279425  Halle/Saale                Germany             active 2
+310  Daniel Cabral         543 Bergamo Avenue                      59686 103602195112  Ibirit                     Brazil              active 2
+247  Stella Moreno         1473 Changhwa Parkway                   75933 266798132374  Coacalco de Berriozbal     Mexico              active 1
+
+Delete-Abfragen:
+
+Aufgabe 5.a) Vergabe eines neuen, sicheren Passworts für alle Mitarbeiter:
+Passwort für staff_id 1 wurde erfolgreich aktualisiert.
+Passwort für staff_id 2 wurde erfolgreich aktualisiert.
+
+Ausgabe der neuen Passwörter:
+Staff ID: 1, Password: DeinNeuesSicheresPasswort123!
+Staff ID: 2, Password: DeinNeuesSicheresPasswort321!
+
+Aufgabe 5.b) Verlegung des Inventars an einen neuen Standort: Feldstraße 143, 22880 Wedel, Germany
+Inhalt der Tabelle 'store':
+Store ID: 1, Manager-ID: 1, Address-ID: 1
+Store ID: 2, Manager-ID: 2, Address-ID: 2
+Store ID: 3, Manager-ID: 1, Address-ID: 999
+Vorhandene Store-ID in der Tabelle Inventory:
+{1, 2}
+Verlegung des Inventars wird durchgefürt...
+Vorhandene Store-ID in der Tabelle Inventory nach Verlegung des Inventars:
+{3}
+
+Delete-Abfragen:
+
+Aufgabe 6.a)  Löscht alle Filme, die weniger als 60 Minuten Spielzeit haben und
+Aufgabe 6.b)  Löscht alle damit zusammenhängenden Entleihungen:
+Zu löschende Filme (film_id): [110, 363, 849, 247, 214, 504, 219, 779, 369, 548, 947, 657, 465, 862, 398, 83, 824, 237, 134, 670, 883, 505, 402, 497, 111, 869, 8, 732, 866, 981, 2, 697, 18, 730, 794, 409, 411, 845, 486, 215, 799, 15, 410, 338, 888, 607, 617, 603, 243, 575, 199, 630, 633, 226, 679, 626, 392, 187, 753, 205, 407, 524, 812, 469, 384, 598, 972, 443, 171, 912, 634, 386, 970, 303, 292, 542, 430, 581, 164, 784, 565, 516, 635, 481, 393, 97, 192, 159, 285, 1000, 489, 66, 931, 238, 3, 867]
+Alle Filme mit Länge < 60 wurden erfolgreich gelöscht.
+Alle zugehörigen Rentals wurden erfolgreich gelöscht.
+
+---------------------Alle CQL-Anfragen wurden bearbeitet--------------------------
+
+Gesamtlaufzeit des Skripts: 161.86 Sekunden
